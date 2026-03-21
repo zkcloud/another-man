@@ -4,25 +4,35 @@
 
 ---
 
-## 当前阶段：Phase 0 - 项目初始化
+## 当前阶段：Phase 0 - 项目初始化 ✅ 完成
 
-### 进行中任务
+### 已完成任务
 
 - [x] 1. 初始化 Tauri 项目 - 创建 Rust + Vue 3 脚手架
-  - 规划：✅ 已完成
-  - 验收：✅ 项目结构正确
+  - 验收：✅ 项目结构正确，代码已推送
 
-- [ ] 2. 创建开发分支
-  - 规划：待执行
-  - 验收：dev 分支存在且基于 master
+- [x] 2. 创建开发分支
+  - 验收：✅ dev 分支已推送
 
-- [ ] 3. 创建 Issue 追踪 - 按 Phase 创建任务
-  - 规划：待执行
-  - 验收：GitHub Issues 中创建 Phase 1-4 的任务
+- [x] 3. 创建 Issue 追踪 - 按 Phase 创建任务
+  - 验收：✅ Phase 1-4 Issues 已创建
 
-- [ ] 4. 设置 CI/CD - GitHub Actions 自动化构建
-  - 规划：待执行
-  - 验收：PR 提交时触发构建检查
+- [x] 4. 设置 CI/CD - GitHub Actions 自动化构建
+  - 验收：✅ CI 配置已推送
+
+---
+
+## 下一阶段：Phase 1 - MVP (4周)
+
+### 待执行任务
+
+参考 GitHub Issue #1: Phase 1: MVP (4周)
+
+1. [ ] 基础 HTTP 请求构建器
+2. [ ] 响应展示 (JSON/XML/HTML)
+3. [ ] 集合管理 (Collection/Folder/Request)
+4. [ ] 环境变量系统
+5. [ ] 历史记录
 
 ---
 
@@ -37,7 +47,10 @@
 - [x] 创建 GitHub 仓库 zkcloud/another-man
 - [x] 推送设计文档 docs/DESIGN.md
 - [x] 初始化 Tauri + Vue 3 项目
+- [x] 创建 dev 分支
+- [x] 创建 Phase 1-4 Issues
+- [x] 设置 CI/CD
 
 ---
 
-最后更新：2026-03-21 23:45
+最后更新：2026-03-22 00:15
