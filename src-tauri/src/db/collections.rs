@@ -27,6 +27,50 @@ pub struct SavedRequest {
     pub updated_at: i64,
 }
 
+// Export format (Postman-like)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExportedCollection {
+    pub info: ExportInfo,
+    pub item: Vec<ExportItem>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExportInfo {
+    pub name: String,
+    pub schema: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExportItem {
+    pub name: String,
+    pub request: ExportRequest,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExportRequest {
+    pub method: String,
+    pub header: Vec<ExportHeader>,
+    pub url: ExportUrl,
+    pub body: Option<ExportBody>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExportHeader {
+    pub key: String,
+    pub value: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExportUrl {
+    pub raw: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExportBody {
+    pub mode: String,
+    pub raw: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateCollectionInput {
     pub name: String,
@@ -170,5 +214,107 @@ impl Database {
     pub fn delete_request(&self, id: &str) -> Result<()> {
         self.conn.execute("DELETE FROM requests WHERE id = ?1", [id])?;
         Ok(())
+    }
+    
+    // Export/Import operations
+    pub fn export_collection(&self, collection_id: &str) -> Result<ExportedCollection> {
+        // Get collection info
+        let collection: Collection = self.conn.query_row(
+            "SELECT id, name, description, parent_id, sort_order, created_at, updated_at FROM collections WHERE id = ?1",
+            [collection_id],
+            |row| Ok(Collection {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                description: row.get(2)?,
+                parent_id: row.get(3)?,
+                sort_order: row.get(4)?,
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
+            }),
+        )?;
+        
+        // Get requests
+        let requests = self.get_requests_by_collection(collection_id)?;
+        
+        // Build export format
+        let items: Vec<ExportItem> = requests.into_iter().map(|req| {
+            let headers: Vec<crate::models::Header> = 
+                serde_json::from_str(&req.headers).unwrap_or_default();
+            
+            let export_headers: Vec<ExportHeader> = headers
+                .into_iter()
+                .filter(|h| h.enabled)
+                .map(|h| ExportHeader { key: h.key, value: h.value })
+                .collect();
+            
+            ExportItem {
+                name: req.name,
+                request: ExportRequest {
+                    method: req.method,
+                    header: export_headers,
+                    url: ExportUrl { raw: req.url },
+                    body: req.body.map(|b| ExportBody { mode: "raw".to_string(), raw: b }),
+                },
+            }
+        }).collect();
+        
+        Ok(ExportedCollection {
+            info: ExportInfo {
+                name: collection.name,
+                schema: "https://schema.getpostman.com/json/collection/v2.1.0/collection.json".to_string(),
+            },
+            item: items,
+        })
+    }
+    
+    pub fn import_collection(&self, imported: &ExportedCollection) -> Result<Collection> {
+        let now = chrono::Utc::now().timestamp();
+        let collection_id = uuid::Uuid::new_v4().to_string();
+        
+        // Create collection
+        self.conn.execute(
+            "INSERT INTO collections (id, name, description, parent_id, sort_order, created_at, updated_at)
+             VALUES (?1, ?2, NULL, NULL, 0, ?3, ?3)",
+            params![&collection_id, &imported.info.name, now],
+        )?;
+        
+        // Import items
+        for item in &imported.item {
+            let request_id = uuid::Uuid::new_v4().to_string();
+            let headers: Vec<crate::models::Header> = item.request.header
+                .iter()
+                .map(|h| crate::models::Header {
+                    key: h.key.clone(),
+                    value: h.value.clone(),
+                    enabled: true,
+                })
+                .collect();
+            let headers_json = serde_json::to_string(&headers).unwrap_or_default();
+            
+            self.conn.execute(
+                "INSERT INTO requests (id, collection_id, name, method, url, headers, body, sort_order, created_at, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, ?8, ?8)",
+                params![
+                    &request_id,
+                    &collection_id,
+                    &item.name,
+                    &item.request.method,
+                    &item.request.url.raw,
+                    &headers_json,
+                    item.request.body.as_ref().map(|b| b.raw.clone()),
+                    now
+                ],
+            )?;
+        }
+        
+        Ok(Collection {
+            id: collection_id,
+            name: imported.info.name.clone(),
+            description: None,
+            parent_id: None,
+            sort_order: 0,
+            created_at: now,
+            updated_at: now,
+        })
     }
 }

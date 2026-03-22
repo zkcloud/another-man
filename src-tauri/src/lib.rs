@@ -4,7 +4,11 @@ mod db;
 
 use models::{HttpRequest, HttpResponse, ResponseError};
 use core::HttpClient;
-use db::{Database, HistoryEntry, Collection, SavedRequest, CreateCollectionInput, CreateRequestInput};
+use db::{
+    Database, HistoryEntry, Collection, SavedRequest, 
+    CreateCollectionInput, CreateRequestInput, 
+    Environment, CreateEnvironmentInput, ExportedCollection
+};
 use std::sync::Mutex;
 use tauri::Manager;
 
@@ -25,10 +29,9 @@ async fn send_http_request(
     
     // Save to history
     if let Ok(ref resp) = response {
-        if let Ok(mut db_guard) = state.db.lock() {
+        if let Ok(db_guard) = state.db.lock() {
             if let Some(ref db) = *db_guard {
                 let _ = db.save_history(&request, Some(resp));
-                // Keep only last 1000 entries
                 let _ = db.delete_old_history(1000);
             }
         }
@@ -50,6 +53,189 @@ fn get_history(
     Err("Database not initialized".to_string())
 }
 
+// Collection commands
+#[tauri::command]
+fn create_collection(
+    input: CreateCollectionInput,
+    state: tauri::State<'_, AppState>
+) -> Result<Collection, String> {
+    if let Ok(db_guard) = state.db.lock() {
+        if let Some(ref db) = *db_guard {
+            return db.create_collection(input).map_err(|e| e.to_string());
+        }
+    }
+    Err("Database not initialized".to_string())
+}
+
+#[tauri::command]
+fn get_collections(state: tauri::State<'_, AppState>) -> Result<Vec<Collection>, String> {
+    if let Ok(db_guard) = state.db.lock() {
+        if let Some(ref db) = *db_guard {
+            return db.get_collections().map_err(|e| e.to_string());
+        }
+    }
+    Err("Database not initialized".to_string())
+}
+
+#[tauri::command]
+fn update_collection(
+    id: String,
+    name: String,
+    description: Option<String>,
+    state: tauri::State<'_, AppState>
+) -> Result<(), String> {
+    if let Ok(db_guard) = state.db.lock() {
+        if let Some(ref db) = *db_guard {
+            return db.update_collection(&id, &name, description.as_deref()).map_err(|e| e.to_string());
+        }
+    }
+    Err("Database not initialized".to_string())
+}
+
+#[tauri::command]
+fn delete_collection(id: String, state: tauri::State<'_, AppState>) -> Result<(), String> {
+    if let Ok(db_guard) = state.db.lock() {
+        if let Some(ref db) = *db_guard {
+            return db.delete_collection(&id).map_err(|e| e.to_string());
+        }
+    }
+    Err("Database not initialized".to_string())
+}
+
+// Saved Request commands
+#[tauri::command]
+fn create_saved_request(
+    input: CreateRequestInput,
+    state: tauri::State<'_, AppState>
+) -> Result<SavedRequest, String> {
+    if let Ok(db_guard) = state.db.lock() {
+        if let Some(ref db) = *db_guard {
+            return db.create_request(input).map_err(|e| e.to_string());
+        }
+    }
+    Err("Database not initialized".to_string())
+}
+
+#[tauri::command]
+fn get_requests_by_collection(
+    collection_id: String,
+    state: tauri::State<'_, AppState>
+) -> Result<Vec<SavedRequest>, String> {
+    if let Ok(db_guard) = state.db.lock() {
+        if let Some(ref db) = *db_guard {
+            return db.get_requests_by_collection(&collection_id).map_err(|e| e.to_string());
+        }
+    }
+    Err("Database not initialized".to_string())
+}
+
+#[tauri::command]
+fn delete_saved_request(id: String, state: tauri::State<'_, AppState>) -> Result<(), String> {
+    if let Ok(db_guard) = state.db.lock() {
+        if let Some(ref db) = *db_guard {
+            return db.delete_request(&id).map_err(|e| e.to_string());
+        }
+    }
+    Err("Database not initialized".to_string())
+}
+
+// Environment commands
+#[tauri::command]
+fn create_environment(
+    input: CreateEnvironmentInput,
+    state: tauri::State<'_, AppState>
+) -> Result<Environment, String> {
+    if let Ok(db_guard) = state.db.lock() {
+        if let Some(ref db) = *db_guard {
+            return db.create_environment(input).map_err(|e| e.to_string());
+        }
+    }
+    Err("Database not initialized".to_string())
+}
+
+#[tauri::command]
+fn get_environments(state: tauri::State<'_, AppState>) -> Result<Vec<Environment>, String> {
+    if let Ok(db_guard) = state.db.lock() {
+        if let Some(ref db) = *db_guard {
+            return db.get_environments().map_err(|e| e.to_string());
+        }
+    }
+    Err("Database not initialized".to_string())
+}
+
+#[tauri::command]
+fn get_environment(id: String, state: tauri::State<'_, AppState>) -> Result<Option<Environment>, String> {
+    if let Ok(db_guard) = state.db.lock() {
+        if let Some(ref db) = *db_guard {
+            return db.get_environment(&id).map_err(|e| e.to_string());
+        }
+    }
+    Err("Database not initialized".to_string())
+}
+
+#[tauri::command]
+fn update_environment(
+    id: String,
+    name: String,
+    variables: std::collections::HashMap<String, String>,
+    is_global: bool,
+    state: tauri::State<'_, AppState>
+) -> Result<(), String> {
+    if let Ok(db_guard) = state.db.lock() {
+        if let Some(ref db) = *db_guard {
+            return db.update_environment(&id, &name, &variables, is_global).map_err(|e| e.to_string());
+        }
+    }
+    Err("Database not initialized".to_string())
+}
+
+#[tauri::command]
+fn delete_environment(id: String, state: tauri::State<'_, AppState>) -> Result<(), String> {
+    if let Ok(db_guard) = state.db.lock() {
+        if let Some(ref db) = *db_guard {
+            return db.delete_environment(&id).map_err(|e| e.to_string());
+        }
+    }
+    Err("Database not initialized".to_string())
+}
+
+#[tauri::command]
+fn get_active_environment(state: tauri::State<'_, AppState>) -> Result<Option<Environment>, String> {
+    if let Ok(db_guard) = state.db.lock() {
+        if let Some(ref db) = *db_guard {
+            return db.get_active_environment().map_err(|e| e.to_string());
+        }
+    }
+    Err("Database not initialized".to_string())
+}
+
+// Export/Import commands
+#[tauri::command]
+fn export_collection(
+    collection_id: String,
+    state: tauri::State<'_, AppState>
+) -> Result<ExportedCollection, String> {
+    if let Ok(db_guard) = state.db.lock() {
+        if let Some(ref db) = *db_guard {
+            return db.export_collection(&collection_id).map_err(|e| e.to_string());
+        }
+    }
+    Err("Database not initialized".to_string())
+}
+
+#[tauri::command]
+fn import_collection(
+    imported: ExportedCollection,
+    state: tauri::State<'_, AppState>
+) -> Result<Collection, String> {
+    if let Ok(db_guard) = state.db.lock() {
+        if let Some(ref db) = *db_guard {
+            return db.import_collection(&imported).map_err(|e| e.to_string());
+        }
+    }
+    Err("Database not initialized".to_string())
+}
+
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
@@ -59,6 +245,7 @@ fn greet(name: &str) -> String {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_fs::init())
         .manage(AppState { db: Mutex::new(None) })
         .setup(|app| {
             // Initialize database
@@ -83,7 +270,15 @@ pub fn run() {
             delete_collection,
             create_saved_request,
             get_requests_by_collection,
-            delete_saved_request
+            delete_saved_request,
+            create_environment,
+            get_environments,
+            get_environment,
+            update_environment,
+            delete_environment,
+            get_active_environment,
+            export_collection,
+            import_collection
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
