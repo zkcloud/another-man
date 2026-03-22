@@ -1,28 +1,21 @@
 # TODO.md - Another Man 项目任务追踪
 
-> 使用原则：当此文件更新时，重新评估并调整工作计划
+## 当前阶段：Phase 2 - 核心功能 (4周) 🔄 Week 2/4
 
----
+### Phase 2 Week 1: 脚本引擎基础 ✅ 完成
+- [x] 简化版脚本引擎
+- [x] pm.environment.set/get API
+- [x] pm.test() 和 pm.response.to.have.status()
+- [x] ScriptEditor.vue 组件
 
-## 当前阶段：Phase 2 - 核心功能 (4周) 🔄 Week 1/4
-
-### Phase 2 Week 1: 脚本引擎基础
-
-| # | 任务 | 状态 | 验收条件 |
-|---|------|------|---------|
-| 2.1.1 | 添加 QuickJS 依赖 | ⏳ 待执行 | rquickjs 集成 |
-| 2.1.2 | 创建脚本执行引擎 | ⏳ 待执行 | 能执行 JS 代码 |
-| 2.1.3 | Pre-request Script API | ⏳ 待执行 | pm.environment.set |
-| 2.1.4 | Test Script API | ⏳ 待执行 | pm.test/pm.response |
-| 2.1.5 | 前端脚本编辑器 | ⏳ 待执行 | Monaco 编辑器 |
-
-### Phase 2 Week 2: 认证系统
+### Phase 2 Week 2: 认证系统 🔄 进行中
 | # | 任务 | 状态 | 验收条件 |
 |---|------|------|---------|
 | 2.2.1 | Basic Auth | ⏳ 待执行 | 基础认证支持 |
 | 2.2.2 | Bearer Token | ⏳ 待执行 | JWT 支持 |
 | 2.2.3 | API Key | ⏳ 待执行 | Header/Query 支持 |
 | 2.2.4 | OAuth2 流程 | ⏳ 待执行 | 授权码模式 |
+| 2.2.5 | 认证 UI | ⏳ 待执行 | 认证配置面板 |
 
 ### Phase 2 Week 3: 文件处理
 | # | 任务 | 状态 | 验收条件 |
@@ -50,4 +43,4 @@
 
 ---
 
-最后更新：2026-03-22 18:05
+最后更新：2026-03-22 23:00

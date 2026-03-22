@@ -5,6 +5,7 @@ import { createSavedRequest, getCollections } from "../api/collections.js";
 import { executePreRequestScript, executeTestScript } from "../api/scripts.js";
 import ResponseViewer from "./ResponseViewer.vue";
 import ScriptEditor from "./ScriptEditor.vue";
+import AuthEditor from "./AuthEditor.vue";
 
 const request = reactive(createRequest("GET", ""));
 const response = ref(null);
@@ -20,10 +21,13 @@ const saveCollectionId = ref("");
 const collections = ref([]);
 
 // Scripts
-const activeTab = ref("params"); // params, headers, body, pre-script, tests
+const activeTab = ref("headers"); // headers, body, auth, pre-script, tests
 const preRequestScript = ref("");
 const testScript = ref("");
 const scriptEnvChanges = ref({});
+
+// Auth
+const requestAuth = ref({ type: "none" });
 
 const emit = defineEmits(["request-sent"]);
 
@@ -62,6 +66,7 @@ async function sendRequest() {
     const req = {
       ...request,
       body,
+      auth: requestAuth.value,
     };
     
     const result = await sendHttpRequest(req);
@@ -181,6 +186,12 @@ defineExpose({ loadRequest });
         Body
       </button>
       <button 
+        :class="['tab-btn', { active: activeTab === 'auth' }]" 
+        @click="activeTab = 'auth'"
+      >
+        Auth
+      </button>
+      <button 
         :class="['tab-btn', { active: activeTab === 'pre-script' }]" 
         @click="activeTab = 'pre-script'"
       >
@@ -231,6 +242,11 @@ defineExpose({ loadRequest });
           rows="6"
         ></textarea>
       </div>
+    </div>
+
+    <!-- Auth Tab -->
+    <div v-if="activeTab === 'auth'" class="tab-content">
+      <AuthEditor v-model:auth="requestAuth" />
     </div>
 
     <!-- Pre-request Script Tab -->
