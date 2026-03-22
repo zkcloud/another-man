@@ -1,6 +1,7 @@
 mod models;
 mod core;
 mod db;
+mod script;
 
 use models::{HttpRequest, HttpResponse, ResponseError};
 use core::HttpClient;
@@ -9,6 +10,7 @@ use db::{
     CreateCollectionInput, CreateRequestInput, 
     Environment, CreateEnvironmentInput, ExportedCollection
 };
+use script::{ScriptEngine, ScriptExecutionResult};
 use std::sync::Mutex;
 use tauri::Manager;
 
@@ -236,6 +238,74 @@ fn import_collection(
     Err("Database not initialized".to_string())
 }
 
+// Script commands
+#[tauri::command]
+fn execute_pre_request_script(
+    script: String,
+    env_id: Option<String>,
+    state: tauri::State<'_, AppState>
+) -> Result<std::collections::HashMap<String, String>, String> {
+    let engine = ScriptEngine::new();
+    
+    // Get current environment variables
+    let env_vars = if let Ok(db_guard) = state.db.lock() {
+        if let Some(ref db) = *db_guard {
+            if let Some(env_id) = env_id {
+                db.get_environment(&env_id)
+                    .map(|e| e.map(|env| env.variables).unwrap_or_default())
+                    .unwrap_or_default()
+            } else {
+                db.get_active_environment()
+                    .map(|e| e.map(|env| env.variables).unwrap_or_default())
+                    .unwrap_or_default()
+            }
+        } else {
+            std::collections::HashMap::new()
+        }
+    } else {
+        std::collections::HashMap::new()
+    };
+    
+    engine.execute_pre_request(&script, env_vars)
+}
+
+#[tauri::command]
+fn execute_test_script(
+    script: String,
+    response: HttpResponse,
+    env_id: Option<String>,
+    state: tauri::State<'_, AppState>
+) -> Result<ScriptExecutionResult, String> {
+    let engine = ScriptEngine::new();
+    
+    // Get current environment variables
+    let env_vars = if let Ok(db_guard) = state.db.lock() {
+        if let Some(ref db) = *db_guard {
+            if let Some(env_id) = env_id {
+                db.get_environment(&env_id)
+                    .map(|e| e.map(|env| env.variables).unwrap_or_default())
+                    .unwrap_or_default()
+            } else {
+                db.get_active_environment()
+                    .map(|e| e.map(|env| env.variables).unwrap_or_default())
+                    .unwrap_or_default()
+            }
+        } else {
+            std::collections::HashMap::new()
+        }
+    } else {
+        std::collections::HashMap::new()
+    };
+    
+    engine.execute_test(&script, response, env_vars)
+}
+
+#[tauri::command]
+fn validate_script(script: String) -> Result<(), String> {
+    let engine = ScriptEngine::new();
+    engine.validate_script(&script)
+}
+
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
@@ -278,7 +348,10 @@ pub fn run() {
             delete_environment,
             get_active_environment,
             export_collection,
-            import_collection
+            import_collection,
+            execute_pre_request_script,
+            execute_test_script,
+            validate_script
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

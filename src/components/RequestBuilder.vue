@@ -2,7 +2,9 @@
 import { ref, reactive, watch } from "vue";
 import { sendHttpRequest, HttpMethods, createRequest, createHeader } from "../api/http.js";
 import { createSavedRequest, getCollections } from "../api/collections.js";
+import { executePreRequestScript, executeTestScript } from "../api/scripts.js";
 import ResponseViewer from "./ResponseViewer.vue";
+import ScriptEditor from "./ScriptEditor.vue";
 
 const request = reactive(createRequest("GET", ""));
 const response = ref(null);
@@ -17,6 +19,12 @@ const saveName = ref("");
 const saveCollectionId = ref("");
 const collections = ref([]);
 
+// Scripts
+const activeTab = ref("params"); // params, headers, body, pre-script, tests
+const preRequestScript = ref("");
+const testScript = ref("");
+const scriptEnvChanges = ref({});
+
 const emit = defineEmits(["request-sent"]);
 
 async function sendRequest() {
@@ -25,6 +33,26 @@ async function sendRequest() {
   response.value = null;
   
   try {
+    // Execute pre-request script
+    if (preRequestScript.value.trim()) {
+      try {
+        const changes = await executePreRequestScript(preRequestScript.value);
+        scriptEnvChanges.value = changes;
+        // Apply environment changes to request
+        for (const [key, value] of Object.entries(changes)) {
+          request.url = request.url.replace(`{{${key}}}`, value);
+          if (request.body) {
+            request.body = request.body.replace(`{{${key}}}`, value);
+          }
+          request.headers.forEach(h => {
+            h.value = h.value.replace(`{{${key}}}`, value);
+          });
+        }
+      } catch (scriptErr) {
+        console.error("Pre-request script error:", scriptErr);
+      }
+    }
+    
     // Prepare body
     let body = null;
     if (request.body) {
@@ -38,6 +66,16 @@ async function sendRequest() {
     
     const result = await sendHttpRequest(req);
     response.value = result;
+    
+    // Execute test script
+    if (testScript.value.trim() && result) {
+      try {
+        await executeTestScript(testScript.value, result);
+      } catch (testErr) {
+        console.error("Test script error:", testErr);
+      }
+    }
+    
     emit("request-sent");
   } catch (err) {
     error.value = err.message || "Request failed";
@@ -128,41 +166,88 @@ defineExpose({ loadRequest });
       </button>
     </div>
 
-    <!-- Headers Section -->
-    <div class="section">
-      <h3>Headers</h3>
-      <div class="headers-list">
-        <div
-          v-for="(header, index) in request.headers"
-          :key="index"
-          class="header-row"
-        >
-          <input
-            type="checkbox"
-            :checked="header.enabled"
-            @change="toggleHeader(index)"
-          />
-          <input v-model="header.key" placeholder="Key" class="header-key" />
-          <input v-model="header.value" placeholder="Value" class="header-value" />
-          <button @click="removeHeader(index)" class="remove-btn">×</button>
-        </div>
-        <div class="header-row new-header">
-          <input v-model="newHeader.key" placeholder="Key" class="header-key" />
-          <input v-model="newHeader.value" placeholder="Value" class="header-value" />
-          <button @click="addHeader" class="add-btn">+</button>
+    <!-- Request Tabs -->
+    <div class="request-tabs">
+      <button 
+        :class="['tab-btn', { active: activeTab === 'headers' }]" 
+        @click="activeTab = 'headers'"
+      >
+        Headers
+      </button>
+      <button 
+        :class="['tab-btn', { active: activeTab === 'body' }]" 
+        @click="activeTab = 'body'"
+      >
+        Body
+      </button>
+      <button 
+        :class="['tab-btn', { active: activeTab === 'pre-script' }]" 
+        @click="activeTab = 'pre-script'"
+      >
+        Pre-request Script
+      </button>
+      <button 
+        :class="['tab-btn', { active: activeTab === 'tests' }]" 
+        @click="activeTab = 'tests'"
+      >
+        Tests
+      </button>
+    </div>
+
+    <!-- Headers Tab -->
+    <div v-if="activeTab === 'headers'" class="tab-content">
+      <div class="section">
+        <div class="headers-list">
+          <div
+            v-for="(header, index) in request.headers"
+            :key="index"
+            class="header-row"
+          >
+            <input
+              type="checkbox"
+              :checked="header.enabled"
+              @change="toggleHeader(index)"
+            />
+            <input v-model="header.key" placeholder="Key" class="header-key" />
+            <input v-model="header.value" placeholder="Value" class="header-value" />
+            <button @click="removeHeader(index)" class="remove-btn">×</button>
+          </div>
+          <div class="header-row new-header">
+            <input v-model="newHeader.key" placeholder="Key" class="header-key" />
+            <input v-model="newHeader.value" placeholder="Value" class="header-value" />
+            <button @click="addHeader" class="add-btn">+</button>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Body Section -->
-    <div class="section">
-      <h3>Body</h3>
-      <textarea
-        v-model="request.body"
-        placeholder="Request body (JSON/Text)..."
-        class="body-input"
-        rows="6"
-      ></textarea>
+    <!-- Body Tab -->
+    <div v-if="activeTab === 'body'" class="tab-content">
+      <div class="section">
+        <textarea
+          v-model="request.body"
+          placeholder="Request body (JSON/Text)..."
+          class="body-input"
+          rows="6"
+        ></textarea>
+      </div>
+    </div>
+
+    <!-- Pre-request Script Tab -->
+    <div v-if="activeTab === 'pre-script'" class="tab-content">
+      <ScriptEditor
+        type="pre-request"
+        @script-change="(s) => preRequestScript = s"
+      />
+    </div>
+
+    <!-- Tests Tab -->
+    <div v-if="activeTab === 'tests'" class="tab-content">
+      <ScriptEditor
+        type="test"
+        :response="response"
+        @script-change="(s) => testScript = s"
+      />
     </div>
 
     <!-- Response Section -->
@@ -429,5 +514,44 @@ defineExpose({ loadRequest });
 .dialog-actions button.primary {
   background: #007bff;
   color: white;
+}
+
+/* Tabs */
+.request-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 0;
+  border-bottom: 1px solid #ddd;
+}
+
+.tab-btn {
+  padding: 10px 20px;
+  background: #f8f9fa;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  cursor: pointer;
+  font-size: 13px;
+  color: #666;
+}
+
+.tab-btn:hover {
+  background: #e9ecef;
+}
+
+.tab-btn.active {
+  background: white;
+  border-color: #ddd;
+  border-bottom-color: white;
+  color: #333;
+  font-weight: 500;
+}
+
+.tab-content {
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  margin-bottom: 20px;
 }
 </style>
