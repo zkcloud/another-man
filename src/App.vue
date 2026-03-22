@@ -3,6 +3,7 @@ import { ref } from "vue";
 import Sidebar from "./components/Sidebar.vue";
 import RequestBuilder from "./components/RequestBuilder.vue";
 import EnvironmentManager from "./components/EnvironmentManager.vue";
+import ExportImport from "./components/ExportImport.vue";
 
 const sidebarRef = ref(null);
 const requestBuilderRef = ref(null);
@@ -28,6 +29,12 @@ function onEnvironmentChanged() {
   loadActiveEnvironment();
 }
 
+function onCollectionsChanged() {
+  if (sidebarRef.value) {
+    sidebarRef.value.loadCollections();
+  }
+}
+
 async function loadActiveEnvironment() {
   try {
     const { getActiveEnvironment } = await import("./api/environments.js");
@@ -38,7 +45,6 @@ async function loadActiveEnvironment() {
   }
 }
 
-// Load active environment on mount
 loadActiveEnvironment();
 </script>
 
@@ -50,6 +56,7 @@ loadActiveEnvironment();
         <p class="subtitle">本地优先 API 测试工具</p>
       </div>
       <div class="header-right">
+        <ExportImport @collections-changed="onCollectionsChanged" />
         <button
           :class="['env-btn', { active: activeEnvName }]"
           @click="showEnvironments = !showEnvironments"
@@ -65,7 +72,6 @@ loadActiveEnvironment();
         <RequestBuilder ref="requestBuilderRef" @request-sent="onRequestSent" />
       </main>
       
-      <!-- Environment Sidebar -->
       <aside v-if="showEnvironments" class="env-sidebar">
         <EnvironmentManager
           ref="envManagerRef"
