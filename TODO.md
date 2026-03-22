@@ -10,10 +10,10 @@
 
 | # | 任务 | 状态 | 验收条件 |
 |---|------|------|---------|
-| 1.1.1 | 添加后端依赖 (reqwest, rusqlite) | ⏳ 待执行 | Cargo.toml 更新 |
-| 1.1.2 | 创建数据模型 (Request, Response) | ⏳ 待执行 | Rust 结构体定义 |
-| 1.1.3 | 实现 HTTP 客户端核心 | ⏳ 待执行 | 能发送 GET/POST |
-| 1.1.4 | 创建 Tauri Commands | ⏳ 待执行 | 前端可调用的 API |
+| 1.1.1 | 添加后端依赖 (reqwest, rusqlite) | ✅ 完成 | Cargo.toml 更新 |
+| 1.1.2 | 创建数据模型 (Request, Response) | ✅ 完成 | Rust 结构体定义 |
+| 1.1.3 | 实现 HTTP 客户端核心 | ✅ 完成 | 能发送 GET/POST |
+| 1.1.4 | 创建 Tauri Commands | ✅ 完成 | 前端可调用的 API |
 | 1.1.5 | 实现基础请求构建器 UI | ⏳ 待执行 | URL输入 + Method选择 |
 
 ---
@@ -34,6 +34,12 @@
 - [x] 创建 Phase 1-4 Issues
 - [x] 设置 CI/CD
 
+### Week 1 后端部分 ✅
+- [x] 添加依赖 (reqwest, rusqlite, tokio, chrono, uuid, anyhow)
+- [x] 数据模型 (HttpRequest, HttpResponse, HttpMethod, Header, Param)
+- [x] HTTP 客户端 (async send, 支持 7 种方法)
+- [x] Tauri Command (send_http_request)
+
 ---
 
-最后更新：2026-03-22 15:41
+最后更新：2026-03-22 16:00
