@@ -10,6 +10,8 @@ const error = ref(null);
 
 const newHeader = reactive({ key: "", value: "" });
 
+const emit = defineEmits(["request-sent"]);
+
 async function sendRequest() {
   loading.value = true;
   error.value = null;
@@ -18,6 +20,7 @@ async function sendRequest() {
   try {
     const result = await sendHttpRequest(request);
     response.value = result;
+    emit("request-sent");
   } catch (err) {
     error.value = err.message || "Request failed";
   } finally {
