@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive } from "vue";
 import { sendHttpRequest, HttpMethods, createRequest, createHeader } from "../api/http.js";
+import ResponseViewer from "./ResponseViewer.vue";
 
 const request = reactive(createRequest("GET", ""));
 const response = ref(null);
@@ -99,17 +100,7 @@ function toggleHeader(index) {
     </div>
 
     <!-- Response Section -->
-    <div v-if="response" class="response-section">
-      <h3>Response</h3>
-      <div class="response-meta">
-        <span :class="['status', response.status >= 200 && response.status < 300 ? 'success' : 'error']">
-          {{ response.status }} {{ response.status_text }}
-        </span>
-        <span class="time">{{ response.time_ms }}ms</span>
-        <span class="size">{{ response.size_bytes }} bytes</span>
-      </div>
-      <pre class="response-body">{{ response.body }}</pre>
-    </div>
+    <ResponseViewer v-if="response" :response="response" />
 
     <!-- Error Section -->
     <div v-if="error" class="error-section">
