@@ -4,35 +4,17 @@
 
 ---
 
-## 当前阶段：Phase 0 - 项目初始化 ✅ 完成
+## 当前阶段：Phase 1 - MVP (4周) 🔄 Week 1/4
 
-### 已完成任务
+### Week 1: 基础架构 + HTTP 请求
 
-- [x] 1. 初始化 Tauri 项目 - 创建 Rust + Vue 3 脚手架
-  - 验收：✅ 项目结构正确，代码已推送
-
-- [x] 2. 创建开发分支
-  - 验收：✅ dev 分支已推送
-
-- [x] 3. 创建 Issue 追踪 - 按 Phase 创建任务
-  - 验收：✅ Phase 1-4 Issues 已创建
-
-- [x] 4. 设置 CI/CD - GitHub Actions 自动化构建
-  - 验收：✅ CI 配置已推送
-
----
-
-## 下一阶段：Phase 1 - MVP (4周)
-
-### 待执行任务
-
-参考 GitHub Issue #1: Phase 1: MVP (4周)
-
-1. [ ] 基础 HTTP 请求构建器
-2. [ ] 响应展示 (JSON/XML/HTML)
-3. [ ] 集合管理 (Collection/Folder/Request)
-4. [ ] 环境变量系统
-5. [ ] 历史记录
+| # | 任务 | 状态 | 验收条件 |
+|---|------|------|---------|
+| 1.1.1 | 添加后端依赖 (reqwest, rusqlite) | ⏳ 待执行 | Cargo.toml 更新 |
+| 1.1.2 | 创建数据模型 (Request, Response) | ⏳ 待执行 | Rust 结构体定义 |
+| 1.1.3 | 实现 HTTP 客户端核心 | ⏳ 待执行 | 能发送 GET/POST |
+| 1.1.4 | 创建 Tauri Commands | ⏳ 待执行 | 前端可调用的 API |
+| 1.1.5 | 实现基础请求构建器 UI | ⏳ 待执行 | URL输入 + Method选择 |
 
 ---
 
@@ -44,8 +26,9 @@
 
 ## 已完成
 
-- [x] 创建 GitHub 仓库 zkcloud/another-man
-- [x] 推送设计文档 docs/DESIGN.md
+### Phase 0 ✅
+- [x] 创建 GitHub 仓库
+- [x] 推送设计文档
 - [x] 初始化 Tauri + Vue 3 项目
 - [x] 创建 dev 分支
 - [x] 创建 Phase 1-4 Issues
@@ -53,4 +36,4 @@
 
 ---
 
-最后更新：2026-03-22 00:15
+最后更新：2026-03-22 15:41
