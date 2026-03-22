@@ -4,7 +4,7 @@ mod db;
 
 use models::{HttpRequest, HttpResponse, ResponseError};
 use core::HttpClient;
-use db::{Database, HistoryEntry};
+use db::{Database, HistoryEntry, Collection, SavedRequest, CreateCollectionInput, CreateRequestInput};
 use std::sync::Mutex;
 use tauri::Manager;
 
@@ -76,7 +76,14 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             send_http_request,
-            get_history
+            get_history,
+            create_collection,
+            get_collections,
+            update_collection,
+            delete_collection,
+            create_saved_request,
+            get_requests_by_collection,
+            delete_saved_request
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

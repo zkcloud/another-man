@@ -1,9 +1,31 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { invoke } from "@tauri-apps/api/core";
+import {
+  createCollection,
+  getCollections,
+  deleteCollection,
+  createSavedRequest,
+  getRequestsByCollection,
+  deleteSavedRequest,
+} from "../api/collections.js";
 
 const history = ref([]);
+const collections = ref([]);
 const activeTab = ref("history");
+const expandedCollections = ref(new Set());
+
+// New collection form
+const showNewCollection = ref(false);
+const newCollectionName = ref("");
+
+// Computed: tree structure with requests
+const collectionTree = computed(() => {
+  return collections.value.map((col) => ({
+    ...col,
+    requests: expandedCollections.value.has(col.id) ? col._requests || [] : [],
+  }));
+});
 
 async function loadHistory() {
   try {
@@ -11,6 +33,72 @@ async function loadHistory() {
     history.value = result;
   } catch (err) {
     console.error("Failed to load history:", err);
+  }
+}
+
+async function loadCollections() {
+  try {
+    const result = await getCollections();
+    collections.value = result;
+  } catch (err) {
+    console.error("Failed to load collections:", err);
+  }
+}
+
+async function toggleCollection(col) {
+  if (expandedCollections.value.has(col.id)) {
+    expandedCollections.value.delete(col.id);
+  } else {
+    expandedCollections.value.add(col.id);
+    // Load requests for this collection
+    if (!col._requests) {
+      try {
+        const requests = await getRequestsByCollection(col.id);
+        col._requests = requests;
+      } catch (err) {
+        console.error("Failed to load requests:", err);
+        col._requests = [];
+      }
+    }
+  }
+}
+
+async function handleCreateCollection() {
+  if (!newCollectionName.value.trim()) return;
+  
+  try {
+    await createCollection({
+      name: newCollectionName.value.trim(),
+      description: null,
+      parent_id: null,
+    });
+    newCollectionName.value = "";
+    showNewCollection.value = false;
+    await loadCollections();
+  } catch (err) {
+    console.error("Failed to create collection:", err);
+  }
+}
+
+async function handleDeleteCollection(id) {
+  if (!confirm("Delete this collection and all its requests?")) return;
+  
+  try {
+    await deleteCollection(id);
+    await loadCollections();
+  } catch (err) {
+    console.error("Failed to delete collection:", err);
+  }
+}
+
+async function handleDeleteRequest(id) {
+  if (!confirm("Delete this request?")) return;
+  
+  try {
+    await deleteSavedRequest(id);
+    await loadCollections();
+  } catch (err) {
+    console.error("Failed to delete request:", err);
   }
 }
 
@@ -29,18 +117,22 @@ function formatUrl(url) {
 }
 
 function selectHistory(item) {
-  // Emit event to parent to load this request
   emit("select", item);
 }
 
-const emit = defineEmits(["select"]);
+function selectRequest(request) {
+  emit("select-request", request);
+}
+
+const emit = defineEmits(["select", "select-request"]);
 
 onMounted(() => {
   loadHistory();
+  loadCollections();
 });
 
-// Expose loadHistory for parent to call
-defineExpose({ loadHistory });
+// Expose methods for parent
+defineExpose({ loadHistory, loadCollections });
 </script>
 
 <template>
@@ -99,7 +191,67 @@ defineExpose({ loadHistory });
 
     <!-- Collections Tab -->
     <div v-show="activeTab === 'collections'" class="tab-content">
-      <div class="empty-state">Collections coming soon</div>
+      <div class="collections-header">
+        <span>Collections</span>
+        <button class="add-btn" @click="showNewCollection = true">+</button>
+      </div>
+
+      <!-- New Collection Form -->
+      <div v-if="showNewCollection" class="new-collection-form">
+        <input
+          v-model="newCollectionName"
+          type="text"
+          placeholder="Collection name..."
+          @keyup.enter="handleCreateCollection"
+          @keyup.esc="showNewCollection = false"
+        />
+        <div class="form-actions">
+          <button @click="handleCreateCollection">Create</button>
+          <button @click="showNewCollection = false">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Collection Tree -->
+      <div v-if="collections.length === 0" class="empty-state">
+        No collections yet
+      </div>
+      <div v-else class="collection-tree">
+        <div
+          v-for="col in collections"
+          :key="col.id"
+          class="collection-node"
+        >
+          <div class="collection-header" @click="toggleCollection(col)">
+            <span class="expand-icon">
+              {{ expandedCollections.has(col.id) ? "▼" : "▶" }}
+            </span>
+            <span class="folder-icon">📁</span>
+            <span class="collection-name">{{ col.name }}</span>
+            <button class="delete-btn" @click.stop="handleDeleteCollection(col.id)">
+              ×
+            </button>
+          </div>
+          <div v-if="expandedCollections.has(col.id)" class="request-list">
+            <div
+              v-for="req in col._requests || []"
+              :key="req.id"
+              class="request-item"
+              @click="selectRequest(req)"
+            >
+              <span :class="['method', req.method.toLowerCase()]">
+                {{ req.method }}
+              </span>
+              <span class="request-name">{{ req.name }}</span>
+              <button class="delete-btn" @click.stop="handleDeleteRequest(req.id)">
+                ×
+              </button>
+            </div>
+            <div v-if="!col._requests?.length" class="empty-requests">
+              No requests
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </aside>
 </template>
@@ -251,5 +403,160 @@ defineExpose({ loadHistory });
 .timestamp {
   color: #999;
   margin-left: auto;
+}
+
+/* Collections styles */
+.collections-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #f0f0f0;
+  font-weight: 600;
+  font-size: 13px;
+  color: #333;
+}
+
+.add-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: #007bff;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.add-btn:hover {
+  background: #0056b3;
+}
+
+.new-collection-form {
+  padding: 12px;
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.new-collection-form input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.form-actions button {
+  flex: 1;
+  padding: 6px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.form-actions button:first-child {
+  background: #007bff;
+  color: white;
+}
+
+.form-actions button:last-child {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.collection-tree {
+  padding: 8px 0;
+}
+
+.collection-node {
+  margin-bottom: 2px;
+}
+
+.collection-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.collection-header:hover {
+  background: #e3f2fd;
+}
+
+.expand-icon {
+  font-size: 10px;
+  color: #666;
+  width: 12px;
+}
+
+.folder-icon {
+  font-size: 14px;
+}
+
+.collection-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.delete-btn {
+  opacity: 0;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: #dc3545;
+  color: white;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.collection-header:hover .delete-btn,
+.request-item:hover .delete-btn {
+  opacity: 1;
+}
+
+.request-list {
+  padding-left: 24px;
+}
+
+.request-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.request-item:hover {
+  background: #e3f2fd;
+}
+
+.request-name {
+  flex: 1;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empty-requests {
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #999;
 }
 </style>

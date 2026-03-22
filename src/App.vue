@@ -2,28 +2,76 @@
 import { ref } from "vue";
 import Sidebar from "./components/Sidebar.vue";
 import RequestBuilder from "./components/RequestBuilder.vue";
+import EnvironmentManager from "./components/EnvironmentManager.vue";
 
 const sidebarRef = ref(null);
+const requestBuilderRef = ref(null);
+const envManagerRef = ref(null);
+
+const showEnvironments = ref(false);
+const activeEnvName = ref(null);
 
 function onRequestSent() {
-  // Refresh history after request is sent
   if (sidebarRef.value) {
     sidebarRef.value.loadHistory();
+    sidebarRef.value.loadCollections();
   }
 }
+
+function onSelectRequest(savedRequest) {
+  if (requestBuilderRef.value) {
+    requestBuilderRef.value.loadRequest(savedRequest);
+  }
+}
+
+function onEnvironmentChanged() {
+  loadActiveEnvironment();
+}
+
+async function loadActiveEnvironment() {
+  try {
+    const { getActiveEnvironment } = await import("./api/environments.js");
+    const env = await getActiveEnvironment();
+    activeEnvName.value = env?.name || null;
+  } catch (err) {
+    console.error("Failed to load active environment:", err);
+  }
+}
+
+// Load active environment on mount
+loadActiveEnvironment();
 </script>
 
 <template>
   <div class="app">
     <header class="app-header">
-      <h1>Another Man</h1>
-      <p class="subtitle">本地优先 API 测试工具</p>
+      <div class="header-left">
+        <h1>Another Man</h1>
+        <p class="subtitle">本地优先 API 测试工具</p>
+      </div>
+      <div class="header-right">
+        <button
+          :class="['env-btn', { active: activeEnvName }]"
+          @click="showEnvironments = !showEnvironments"
+        >
+          {{ activeEnvName || "No Environment" }}
+        </button>
+      </div>
     </header>
+    
     <div class="main-content">
-      <Sidebar ref="sidebarRef" />
+      <Sidebar ref="sidebarRef" @select-request="onSelectRequest" />
       <main class="content">
-        <RequestBuilder @request-sent="onRequestSent" />
+        <RequestBuilder ref="requestBuilderRef" @request-sent="onRequestSent" />
       </main>
+      
+      <!-- Environment Sidebar -->
+      <aside v-if="showEnvironments" class="env-sidebar">
+        <EnvironmentManager
+          ref="envManagerRef"
+          @environment-changed="onEnvironmentChanged"
+        />
+      </aside>
     </div>
   </div>
 </template>
@@ -51,7 +99,13 @@ body {
 .app-header {
   background: #1a1a2e;
   color: white;
-  padding: 16px 24px;
+  padding: 12px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-left {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -67,6 +121,28 @@ body {
   color: #888;
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.env-btn {
+  padding: 8px 16px;
+  background: #2d2d44;
+  color: #888;
+  border: 1px solid #3d3d54;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.env-btn.active {
+  background: #28a745;
+  color: white;
+  border-color: #28a745;
+}
+
 .main-content {
   flex: 1;
   display: flex;
@@ -77,5 +153,12 @@ body {
   flex: 1;
   overflow-y: auto;
   padding: 20px;
+}
+
+.env-sidebar {
+  width: 350px;
+  background: #f8f9fa;
+  border-left: 1px solid #e0e0e0;
+  overflow-y: auto;
 }
 </style>

@@ -88,4 +88,8 @@ impl Database {
 
 // History operations
 pub mod history;
+pub mod collections;
+pub mod environments;
 pub use history::*;
+pub use collections::*;
+pub use environments::*;

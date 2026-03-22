@@ -1,6 +1,7 @@
 <script setup>
-import { ref, reactive } from "vue";
+import { ref, reactive, watch } from "vue";
 import { sendHttpRequest, HttpMethods, createRequest, createHeader } from "../api/http.js";
+import { createSavedRequest, getCollections } from "../api/collections.js";
 import ResponseViewer from "./ResponseViewer.vue";
 
 const request = reactive(createRequest("GET", ""));
@@ -10,6 +11,12 @@ const error = ref(null);
 
 const newHeader = reactive({ key: "", value: "" });
 
+// Save request dialog
+const showSaveDialog = ref(false);
+const saveName = ref("");
+const saveCollectionId = ref("");
+const collections = ref([]);
+
 const emit = defineEmits(["request-sent"]);
 
 async function sendRequest() {
@@ -18,7 +25,18 @@ async function sendRequest() {
   response.value = null;
   
   try {
-    const result = await sendHttpRequest(request);
+    // Prepare body
+    let body = null;
+    if (request.body) {
+      body = { Json: request.body };
+    }
+    
+    const req = {
+      ...request,
+      body,
+    };
+    
+    const result = await sendHttpRequest(req);
     response.value = result;
     emit("request-sent");
   } catch (err) {
@@ -43,6 +61,48 @@ function removeHeader(index) {
 function toggleHeader(index) {
   request.headers[index].enabled = !request.headers[index].enabled;
 }
+
+// Save request functionality
+async function openSaveDialog() {
+  try {
+    collections.value = await getCollections();
+    saveName.value = request.url ? new URL(request.url).pathname : "New Request";
+    showSaveDialog.value = true;
+  } catch (err) {
+    console.error("Failed to load collections:", err);
+  }
+}
+
+async function handleSaveRequest() {
+  if (!saveName.value.trim()) return;
+  
+  try {
+    await createSavedRequest({
+      collection_id: saveCollectionId.value || null,
+      name: saveName.value.trim(),
+      method: request.method,
+      url: request.url,
+      headers: request.headers,
+      body: request.body || null,
+    });
+    showSaveDialog.value = false;
+    emit("request-sent"); // Refresh sidebar
+  } catch (err) {
+    console.error("Failed to save request:", err);
+  }
+}
+
+// Load request from collection
+function loadRequest(savedRequest) {
+  request.id = savedRequest.id;
+  request.method = savedRequest.method;
+  request.url = savedRequest.url;
+  request.headers = savedRequest.headers ? JSON.parse(savedRequest.headers) : [];
+  request.body = savedRequest.body || null;
+}
+
+// Expose loadRequest for parent
+defineExpose({ loadRequest });
 </script>
 
 <template>
@@ -62,6 +122,9 @@ function toggleHeader(index) {
       />
       <button @click="sendRequest" :disabled="loading || !request.url" class="send-btn">
         {{ loading ? "Sending..." : "Send" }}
+      </button>
+      <button @click="openSaveDialog" :disabled="!request.url" class="save-btn">
+        Save
       </button>
     </div>
 
@@ -109,6 +172,30 @@ function toggleHeader(index) {
     <div v-if="error" class="error-section">
       <h3>Error</h3>
       <p class="error-message">{{ error }}</p>
+    </div>
+
+    <!-- Save Dialog -->
+    <div v-if="showSaveDialog" class="dialog-overlay" @click.self="showSaveDialog = false">
+      <div class="dialog">
+        <h3>Save Request</h3>
+        <div class="form-group">
+          <label>Name</label>
+          <input v-model="saveName" type="text" placeholder="Request name..." />
+        </div>
+        <div class="form-group">
+          <label>Collection</label>
+          <select v-model="saveCollectionId">
+            <option value="">No collection</option>
+            <option v-for="col in collections" :key="col.id" :value="col.id">
+              {{ col.name }}
+            </option>
+          </select>
+        </div>
+        <div class="dialog-actions">
+          <button @click="showSaveDialog = false">Cancel</button>
+          <button @click="handleSaveRequest" class="primary">Save</button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -160,6 +247,26 @@ function toggleHeader(index) {
 }
 
 .send-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.save-btn {
+  padding: 10px 20px;
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.save-btn:hover:not(:disabled) {
+  background: #1e7e34;
+}
+
+.save-btn:disabled {
   background: #ccc;
   cursor: not-allowed;
 }
@@ -238,64 +345,89 @@ function toggleHeader(index) {
   resize: vertical;
 }
 
-.response-section, .error-section {
+.error-section {
   margin-top: 20px;
   padding: 15px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid #f5c6cb;
   border-radius: 8px;
-}
-
-.response-section {
-  background: #f0f8ff;
-}
-
-.error-section {
   background: #fff0f0;
-}
-
-.response-meta {
-  display: flex;
-  gap: 20px;
-  margin-bottom: 15px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid #ddd;
-}
-
-.status {
-  font-weight: 600;
-  padding: 4px 12px;
-  border-radius: 4px;
-}
-
-.status.success {
-  background: #d4edda;
-  color: #155724;
-}
-
-.status.error {
-  background: #f8d7da;
-  color: #721c24;
-}
-
-.time, .size {
-  color: #666;
-  font-size: 14px;
-}
-
-.response-body {
-  background: white;
-  padding: 15px;
-  border-radius: 4px;
-  overflow-x: auto;
-  font-family: monospace;
-  font-size: 13px;
-  line-height: 1.5;
-  max-height: 400px;
-  overflow-y: auto;
 }
 
 .error-message {
   color: #dc3545;
   font-weight: 500;
+}
+
+/* Dialog styles */
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.dialog {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  width: 400px;
+  max-width: 90%;
+}
+
+.dialog h3 {
+  margin: 0 0 20px 0;
+  font-size: 18px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.dialog-actions button {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.dialog-actions button:first-child {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.dialog-actions button.primary {
+  background: #007bff;
+  color: white;
 }
 </style>
