@@ -306,6 +306,33 @@ fn validate_script(script: String) -> Result<(), String> {
     engine.validate_script(&script)
 }
 
+// File operations
+#[tauri::command]
+async fn download_file(
+    url: String,
+    save_path: String,
+) -> Result<String, String> {
+    let response = reqwest::get(&url)
+        .await
+        .map_err(|e| format!("Failed to download: {}", e))?;
+    
+    let bytes = response.bytes()
+        .await
+        .map_err(|e| format!("Failed to read response: {}", e))?;
+    
+    std::fs::write(&save_path, &bytes)
+        .map_err(|e| format!("Failed to save file: {}", e))?;
+    
+    Ok(save_path)
+}
+
+#[tauri::command]
+fn select_file() -> Result<Option<String>, String> {
+    // This would use tauri-plugin-dialog in a real implementation
+    // For now, return None
+    Ok(None)
+}
+
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
@@ -351,7 +378,9 @@ pub fn run() {
             import_collection,
             execute_pre_request_script,
             execute_test_script,
-            validate_script
+            validate_script,
+            download_file,
+            select_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
