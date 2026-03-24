@@ -33,6 +33,9 @@ rusqlite = { version = "0.32", features = ["bundled", "chrono"] }
 # Regex
 regex = "1.11"
 
+# CLI
+clap = { version = "4", features = ["derive"] }
+
 # Async runtime
 tokio = { version = "1.40", features = ["rt-multi-thread", "macros"] }
 

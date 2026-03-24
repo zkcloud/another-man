@@ -124,9 +124,44 @@ Phase 3 Week 1 目标：自动化测试增强
 
 ---
 
+### 17:25 - 任务 3.2.2: 执行顺序控制
+
+**执行步骤：**
+1. ✅ 创建 request_dependencies 数据库表
+2. ✅ 实现 RequestDependency CRUD
+3. ✅ 实现拓扑排序 (Kahn's algorithm)
+4. ✅ 添加 Tauri 命令
+
+**提交：** `feat(phase3-week2): add request dependency management`
+
+---
+
+### 17:30 - 任务 3.2.3 & 3.2.4: 并发执行 & 延迟设置
+
+**执行步骤：**
+1. ✅ 添加 HttpClient Clone derive
+2. ✅ CollectionRunner 顺序执行 + delay_ms
+3. ⚠️ 并发执行 - HttpClient::send 使用引用，需重构后实现
+
+**提交：** `feat(phase3-week2): complete batch execution features`
+
+---
+
+## Phase 3 Week 2 完成 ✅
+
+**Week 2 完成总结：**
+- ✅ 3.2.1 Collection Runner - 批量运行
+- ✅ 3.2.2 执行顺序控制 - 依赖管理 + 拓扑排序
+- ⚠️ 3.2.3 并发执行 - 顺序执行可用，并发需重构
+- ✅ 3.2.4 延迟设置 - delay_ms 参数
+
+**总测试数：18 tests passed**
+
+---
+
 ## 下一步
 
-Phase 3 Week 2 剩余任务：
-- [ ] 3.2.2 执行顺序控制（依赖管理）
-- [ ] 3.2.3 并发执行（Semaphore）
-- [ ] 3.2.4 延迟设置
+Phase 3 Week 3:
+- [ ] 3.3.1 CLI 入口
+- [ ] 3.3.2 无头模式
+- [ ] 3.3.3 CI/CD 集成

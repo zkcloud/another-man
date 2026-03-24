@@ -2,6 +2,7 @@ mod models;
 mod core;
 mod db;
 mod script;
+pub mod cli;
 
 use models::{HttpRequest, HttpResponse, ResponseError};
 use core::{HttpClient, TestReportGenerator, TestReport, TestSummary, SuiteReport, TestResultReport, VariableExtractor, VariableExtraction};
@@ -12,6 +13,8 @@ use db::{
     TestSuite, TestCase, TestDatabase
 };
 use script::{ScriptEngine, ScriptExecutionResult};
+
+pub use cli::{Cli, Commands, RunArgs, ReportArgs, ImportArgs, ExportArgs, CliResult};
 use std::sync::Mutex;
 use tauri::Manager;
 
