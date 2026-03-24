@@ -1,3 +1,5 @@
+use serde::{Serialize, Deserialize};
+
 mod models;
 mod core;
 mod db;
@@ -15,6 +17,28 @@ use db::{
 use script::{ScriptEngine, ScriptExecutionResult};
 
 pub use cli::{Cli, Commands, RunArgs, ReportArgs, ImportArgs, ExportArgs, CliResult};
+#[derive(Debug, Serialize, Deserialize)]
+pub struct HeadlessRunResult {
+    pub run_id: String,
+    pub status: String,
+    pub total_requests: u32,
+    pub completed_requests: u32,
+    pub failed_requests: u32,
+    pub duration_ms: i64,
+    pub results: Vec<HeadlessRequestResult>,
+    pub exit_code: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct HeadlessRequestResult {
+    pub name: String,
+    pub status: String,
+    pub status_code: Option<u16>,
+    pub duration_ms: i64,
+    pub error: Option<String>,
+}
+
+use core::CollectionRunner;
 use std::sync::Mutex;
 use tauri::Manager;
 
@@ -611,6 +635,16 @@ fn delete_request_dependency(
         }
     }
     Err("Database not initialized".to_string())
+
+}
+
+#[tauri::command]
+fn get_headless_status() -> String {
+    serde_json::json!({
+        "status": "ready",
+        "mode": "headless",
+        "version": env!("CARGO_PKG_VERSION")
+    }).to_string()
 }
 
 #[tauri::command]
@@ -675,7 +709,8 @@ pub fn run() {
             extract_regex,
             add_request_dependency,
             get_request_dependencies,
-            delete_request_dependency
+            delete_request_dependency,
+            get_headless_status
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
