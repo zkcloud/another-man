@@ -78,6 +78,12 @@ impl Database {
             [],
         )?;
         
+        // Initialize test suite tables
+        let test_db = test_suites::TestDatabase::new(&self.conn);
+        if let Err(e) = test_db.init_tables() {
+            return Err(rusqlite::Error::InvalidParameterName(e.to_string()));
+        }
+        
         Ok(())
     }
     
@@ -90,6 +96,8 @@ impl Database {
 pub mod history;
 pub mod collections;
 pub mod environments;
+pub mod test_suites;
 pub use history::*;
 pub use collections::*;
 pub use environments::*;
+pub use test_suites::*;

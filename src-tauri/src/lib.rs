@@ -8,7 +8,8 @@ use core::HttpClient;
 use db::{
     Database, HistoryEntry, Collection, SavedRequest, 
     CreateCollectionInput, CreateRequestInput, 
-    Environment, CreateEnvironmentInput, ExportedCollection
+    Environment, CreateEnvironmentInput, ExportedCollection,
+    TestSuite, TestCase, TestDatabase
 };
 use script::{ScriptEngine, ScriptExecutionResult};
 use std::sync::Mutex;
@@ -333,6 +334,121 @@ fn select_file() -> Result<Option<String>, String> {
     Ok(None)
 }
 
+// Test Suite commands
+#[tauri::command]
+fn create_test_suite(
+    name: String,
+    description: Option<String>,
+    collection_id: Option<String>,
+    state: tauri::State<'_, AppState>
+) -> Result<TestSuite, String> {
+    if let Ok(db_guard) = state.db.lock() {
+        if let Some(ref db) = *db_guard {
+            let test_db = TestDatabase::new(db.get_conn());
+            return test_db.create_suite(&name, description.as_deref(), collection_id.as_deref())
+                .map_err(|e| e.to_string());
+        }
+    }
+    Err("Database not initialized".to_string())
+}
+
+#[tauri::command]
+fn get_test_suites(state: tauri::State<'_, AppState>) -> Result<Vec<TestSuite>, String> {
+    if let Ok(db_guard) = state.db.lock() {
+        if let Some(ref db) = *db_guard {
+            let test_db = TestDatabase::new(db.get_conn());
+            return test_db.get_suites().map_err(|e| e.to_string());
+        }
+    }
+    Err("Database not initialized".to_string())
+}
+
+#[tauri::command]
+fn delete_test_suite(id: String, state: tauri::State<'_, AppState>) -> Result<(), String> {
+    if let Ok(db_guard) = state.db.lock() {
+        if let Some(ref db) = *db_guard {
+            let test_db = TestDatabase::new(db.get_conn());
+            return test_db.delete_suite(&id).map_err(|e| e.to_string());
+        }
+    }
+    Err("Database not initialized".to_string())
+}
+
+// Test Case commands
+#[tauri::command]
+fn create_test_case(
+    suite_id: String,
+    name: String,
+    request_id: Option<String>,
+    state: tauri::State<'_, AppState>
+) -> Result<TestCase, String> {
+    if let Ok(db_guard) = state.db.lock() {
+        if let Some(ref db) = *db_guard {
+            let test_db = TestDatabase::new(db.get_conn());
+            return test_db.create_case(&suite_id, &name, request_id.as_deref())
+                .map_err(|e| e.to_string());
+        }
+    }
+    Err("Database not initialized".to_string())
+}
+
+#[tauri::command]
+fn get_test_cases(
+    suite_id: String,
+    state: tauri::State<'_, AppState>
+) -> Result<Vec<TestCase>, String> {
+    if let Ok(db_guard) = state.db.lock() {
+        if let Some(ref db) = *db_guard {
+            let test_db = TestDatabase::new(db.get_conn());
+            return test_db.get_cases_by_suite(&suite_id).map_err(|e| e.to_string());
+        }
+    }
+    Err("Database not initialized".to_string())
+}
+
+#[tauri::command]
+fn update_test_case_script(
+    id: String,
+    pre_script: Option<String>,
+    test_script: Option<String>,
+    state: tauri::State<'_, AppState>
+) -> Result<(), String> {
+    if let Ok(db_guard) = state.db.lock() {
+        if let Some(ref db) = *db_guard {
+            let test_db = TestDatabase::new(db.get_conn());
+            return test_db.update_case_script(&id, pre_script.as_deref(), test_script.as_deref())
+                .map_err(|e| e.to_string());
+        }
+    }
+    Err("Database not initialized".to_string())
+}
+
+#[tauri::command]
+fn delete_test_case(id: String, state: tauri::State<'_, AppState>) -> Result<(), String> {
+    if let Ok(db_guard) = state.db.lock() {
+        if let Some(ref db) = *db_guard {
+            let test_db = TestDatabase::new(db.get_conn());
+            return test_db.delete_case(&id).map_err(|e| e.to_string());
+        }
+    }
+    Err("Database not initialized".to_string())
+}
+
+// Test Run commands
+#[tauri::command]
+fn get_test_runs(
+    suite_id: String,
+    state: tauri::State<'_, AppState>
+) -> Result<Vec<crate::db::test_suites::TestRun>, String> {
+    if let Ok(db_guard) = state.db.lock() {
+        if let Some(ref db) = *db_guard {
+            let test_db = TestDatabase::new(db.get_conn());
+            return test_db.get_runs_by_suite(&suite_id).map_err(|e| e.to_string());
+        }
+    }
+    Err("Database not initialized".to_string())
+}
+
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
@@ -380,7 +496,15 @@ pub fn run() {
             execute_test_script,
             validate_script,
             download_file,
-            select_file
+            select_file,
+            create_test_suite,
+            get_test_suites,
+            delete_test_suite,
+            create_test_case,
+            get_test_cases,
+            update_test_case_script,
+            delete_test_case,
+            get_test_runs
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
