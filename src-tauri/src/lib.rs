@@ -639,6 +639,93 @@ fn delete_request_dependency(
 }
 
 #[tauri::command]
+async fn headless_run_collection(
+    collection_id: String,
+    environment_id: Option<String>,
+    iteration_count: u32,
+    delay_ms: u64,
+    stop_on_error: bool,
+    state: tauri::State<'_, AppState>
+) -> Result<String, String> {
+    use crate::db::{Database, SavedRequest};
+    use crate::models::{HttpRequest, HttpMethod, RequestBody};
+    use crate::core::RunConfig;
+    
+    // First, get data with lock
+    let (env_vars, runner_requests) = {
+        let db_guard = state.db.lock().map_err(|_| "Lock error")?;
+        let db = db_guard.as_ref().ok_or("Database not initialized")?;
+        
+        let env_vars = if let Some(ref env_id) = environment_id {
+            db.get_environment(env_id)
+                .map(|e| e.map(|env| env.variables).unwrap_or_default())
+                .unwrap_or_default()
+        } else {
+            db.get_active_environment()
+                .map(|e| e.map(|env| env.variables).unwrap_or_default())
+                .unwrap_or_default()
+        };
+        
+        let requests: Vec<SavedRequest> = db.get_requests_by_collection(&collection_id)
+            .map_err(|e| e.to_string())?;
+        
+        let runner_requests: Vec<(String, String, HttpRequest)> = requests
+            .into_iter()
+            .map(|req| {
+                let http_req = HttpRequest {
+                    id: req.id.clone(),
+                    method: HttpMethod::from(req.method.clone()),
+                    url: req.url.clone(),
+                    headers: serde_json::from_str(&req.headers).unwrap_or_default(),
+                    query_params: vec![],
+                    body: req.body.map(|b| RequestBody::Text(b)),
+                };
+                (req.id, req.name, http_req)
+            })
+            .collect();
+        
+        (env_vars, runner_requests)
+    };
+    
+    let config = RunConfig {
+        collection_id: collection_id.clone(),
+        environment_id,
+        iteration_count,
+        delay_ms,
+        stop_on_error,
+        concurrent_requests: 1,
+    };
+    
+    let runner = CollectionRunner::new();
+    let result = runner.run_collection(config, runner_requests, env_vars).await
+        .map_err(|e| e.to_string())?;
+    
+    let exit_code = if result.failed_requests > 0 { 1 } else { 0 };
+    
+    let headless_result = HeadlessRunResult {
+        run_id: result.run_id,
+        status: format!("{:?}", result.status).to_lowercase(),
+        total_requests: result.total_requests,
+        completed_requests: result.completed_requests,
+        failed_requests: result.failed_requests,
+        duration_ms: result.duration_ms,
+        exit_code,
+        results: result.results.into_iter().map(|r| {
+            HeadlessRequestResult {
+                name: r.request_name,
+                status: format!("{:?}", r.status).to_lowercase(),
+                status_code: r.response.as_ref().map(|resp| resp.status),
+                duration_ms: r.duration_ms,
+                error: r.error,
+            }
+        }).collect(),
+    };
+    
+    serde_json::to_string_pretty(&headless_result)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn get_headless_status() -> String {
     serde_json::json!({
         "status": "ready",
@@ -710,6 +797,7 @@ pub fn run() {
             add_request_dependency,
             get_request_dependencies,
             delete_request_dependency,
+            headless_run_collection,
             get_headless_status
         ])
         .run(tauri::generate_context!())

@@ -35,6 +35,27 @@ impl std::fmt::Display for HttpMethod {
     }
 }
 
+impl From<String> for HttpMethod {
+    fn from(s: String) -> Self {
+        match s.to_uppercase().as_str() {
+            "GET" => HttpMethod::GET,
+            "POST" => HttpMethod::POST,
+            "PUT" => HttpMethod::PUT,
+            "DELETE" => HttpMethod::DELETE,
+            "PATCH" => HttpMethod::PATCH,
+            "HEAD" => HttpMethod::HEAD,
+            "OPTIONS" => HttpMethod::OPTIONS,
+            _ => HttpMethod::GET,
+        }
+    }
+}
+
+impl From<&str> for HttpMethod {
+    fn from(s: &str) -> Self {
+        HttpMethod::from(s.to_string())
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Header {
     pub key: String,
