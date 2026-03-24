@@ -107,10 +107,26 @@ Phase 3 Week 1 目标：自动化测试增强
 
 ---
 
+### 17:10 - 任务 3.2.1: Collection Runner
+
+**执行步骤：**
+1. ✅ 创建 `src-tauri/src/core/collection_runner.rs`
+   - RunConfig, RunResult, RequestResult 数据结构
+   - 顺序执行实现
+   - 变量解析 (URL 占位符替换)
+2. ✅ 添加单元测试（4 tests）
+3. ✅ 编译通过，18 tests passed
+
+**提交：** `feat(phase3-week2): add Collection Runner core module`
+
+**验证：**
+- ✅ cargo test --lib 通过（18 tests）
+
+---
+
 ## 下一步
 
-Phase 3 Week 2:
-- [ ] 3.2.1 Collection Runner
-- [ ] 3.2.2 执行顺序控制
-- [ ] 3.2.3 并发执行
+Phase 3 Week 2 剩余任务：
+- [ ] 3.2.2 执行顺序控制（依赖管理）
+- [ ] 3.2.3 并发执行（Semaphore）
 - [ ] 3.2.4 延迟设置

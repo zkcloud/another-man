@@ -84,6 +84,20 @@ impl Database {
             return Err(rusqlite::Error::InvalidParameterName(e.to_string()));
         }
         
+        // Request dependencies table
+        self.conn.execute(
+            "CREATE TABLE IF NOT EXISTS request_dependencies (
+                id TEXT PRIMARY KEY,
+                request_id TEXT NOT NULL,
+                depends_on_request_id TEXT NOT NULL,
+                created_at INTEGER NOT NULL,
+                FOREIGN KEY (request_id) REFERENCES requests(id) ON DELETE CASCADE,
+                FOREIGN KEY (depends_on_request_id) REFERENCES requests(id) ON DELETE CASCADE,
+                UNIQUE(request_id, depends_on_request_id)
+            )",
+            [],
+        )?;
+        
         Ok(())
     }
     

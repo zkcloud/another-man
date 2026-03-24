@@ -566,6 +566,50 @@ fn extract_regex(body: String, pattern: String, group: usize) -> Result<Option<S
     Ok(extractor.extract_regex(&body, &pattern, group))
 }
 
+// Request dependency commands
+#[tauri::command]
+fn add_request_dependency(
+    request_id: String,
+    depends_on_request_id: String,
+    state: tauri::State<'_, AppState>
+) -> Result<crate::db::collections::RequestDependency, String> {
+    if let Ok(db_guard) = state.db.lock() {
+        if let Some(ref db) = *db_guard {
+            return db.add_request_dependency(&request_id, &depends_on_request_id)
+                .map_err(|e| e.to_string());
+        }
+    }
+    Err("Database not initialized".to_string())
+}
+
+#[tauri::command]
+fn get_request_dependencies(
+    request_id: String,
+    state: tauri::State<'_, AppState>
+) -> Result<Vec<crate::db::collections::RequestDependency>, String> {
+    if let Ok(db_guard) = state.db.lock() {
+        if let Some(ref db) = *db_guard {
+            return db.get_request_dependencies(&request_id)
+                .map_err(|e| e.to_string());
+        }
+    }
+    Err("Database not initialized".to_string())
+}
+
+#[tauri::command]
+fn delete_request_dependency(
+    id: String,
+    state: tauri::State<'_, AppState>
+) -> Result<(), String> {
+    if let Ok(db_guard) = state.db.lock() {
+        if let Some(ref db) = *db_guard {
+            return db.delete_request_dependency(&id)
+                .map_err(|e| e.to_string());
+        }
+    }
+    Err("Database not initialized".to_string())
+}
+
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
@@ -625,7 +669,10 @@ pub fn run() {
             generate_test_report,
             extract_variables,
             extract_json_path,
-            extract_regex
+            extract_regex,
+            add_request_dependency,
+            get_request_dependencies,
+            delete_request_dependency
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

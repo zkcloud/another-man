@@ -27,6 +27,14 @@ pub struct SavedRequest {
     pub updated_at: i64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RequestDependency {
+    pub id: String,
+    pub request_id: String,
+    pub depends_on_request_id: String,
+    pub created_at: i64,
+}
+
 // Export format (Postman-like)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportedCollection {
@@ -316,5 +324,103 @@ impl Database {
             created_at: now,
             updated_at: now,
         })
+    }
+    
+    // Request dependency operations
+    pub fn add_request_dependency(&self, request_id: &str, depends_on_request_id: &str) -> Result<RequestDependency> {
+        let now = chrono::Utc::now().timestamp();
+        let id = uuid::Uuid::new_v4().to_string();
+        
+        self.conn.execute(
+            "INSERT INTO request_dependencies (id, request_id, depends_on_request_id, created_at)
+             VALUES (?1, ?2, ?3, ?4)",
+            params![&id, request_id, depends_on_request_id, now],
+        )?;
+        
+        Ok(RequestDependency {
+            id,
+            request_id: request_id.to_string(),
+            depends_on_request_id: depends_on_request_id.to_string(),
+            created_at: now,
+        })
+    }
+    
+    pub fn get_request_dependencies(&self, request_id: &str) -> Result<Vec<RequestDependency>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, request_id, depends_on_request_id, created_at
+             FROM request_dependencies WHERE request_id = ?1 ORDER BY created_at"
+        )?;
+        
+        let deps = stmt.query_map([request_id], |row| {
+            Ok(RequestDependency {
+                id: row.get(0)?,
+                request_id: row.get(1)?,
+                depends_on_request_id: row.get(2)?,
+                created_at: row.get(3)?,
+            })
+        })?.collect::<Result<Vec<_>>>()?;
+        
+        Ok(deps)
+    }
+    
+    pub fn delete_request_dependency(&self, id: &str) -> Result<()> {
+        self.conn.execute("DELETE FROM request_dependencies WHERE id = ?1", [id])?;
+        Ok(())
+    }
+    
+    /// Get requests in dependency order using topological sort
+    pub fn get_requests_in_order(&self, collection_id: &str) -> Result<Vec<SavedRequest>> {
+        use std::collections::{HashMap, HashSet};
+        
+        let requests = self.get_requests_by_collection(collection_id)?;
+        
+        // Build dependency graph
+        let mut graph: HashMap<String, Vec<String>> = HashMap::new();
+        let mut in_degree: HashMap<String, usize> = HashMap::new();
+        
+        for req in &requests {
+            in_degree.insert(req.id.clone(), 0);
+            graph.insert(req.id.clone(), Vec::new());
+        }
+        
+        // Build edges from dependencies
+        for req in &requests {
+            let deps = self.get_request_dependencies(&req.id)?;
+            for dep in deps {
+                if let Some(edges) = graph.get_mut(&dep.depends_on_request_id) {
+                    edges.push(req.id.clone());
+                }
+                *in_degree.get_mut(&req.id).unwrap() += 1;
+            }
+        }
+        
+        // Kahn's algorithm for topological sort
+        let mut queue: Vec<String> = in_degree.iter()
+            .filter(|(_, &count)| count == 0)
+            .map(|(id, _)| id.clone())
+            .collect();
+        
+        let mut result: Vec<SavedRequest> = Vec::new();
+        let request_map: HashMap<String, SavedRequest> = requests.into_iter()
+            .map(|r| (r.id.clone(), r))
+            .collect();
+        
+        while let Some(id) = queue.pop() {
+            if let Some(req) = request_map.get(&id) {
+                result.push(req.clone());
+            }
+            
+            if let Some(neighbors) = graph.get(&id) {
+                for neighbor in neighbors {
+                    let count = in_degree.get_mut(neighbor).unwrap();
+                    *count -= 1;
+                    if *count == 0 {
+                        queue.push(neighbor.clone());
+                    }
+                }
+            }
+        }
+        
+        Ok(result)
     }
 }
