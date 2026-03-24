@@ -112,13 +112,13 @@ function insertSnippet(snippet) {
     </div>
     
     <div class="editor-toolbar">
-      <button @click="insertSnippet('pm.environment.set(\"key\", \"value\");')" class="snippet-btn">
+      <button @click='insertSnippet("pm.environment.set(\"key\", \"value\");")' class="snippet-btn">
         Set Env
       </button>
-      <button v-if="type === 'test'" @click="insertSnippet('pm.test(\"name\", () => { pm.response.to.have.status(200); });')" class="snippet-btn">
+      <button v-if="type === 'test'" @click='insertSnippet("pm.test(\"name\", function() { pm.response.to.have.status(200); });")' class="snippet-btn">
         Status Test
       </button>
-      <button v-if="type === 'test'" @click="insertSnippet('pm.response.json();')" class="snippet-btn">
+      <button v-if="type === 'test'" @click='insertSnippet("pm.response.json();")' class="snippet-btn">
         JSON Body
       </button>
     </div>
