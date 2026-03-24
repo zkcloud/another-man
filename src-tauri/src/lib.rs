@@ -4,7 +4,7 @@ mod db;
 mod script;
 
 use models::{HttpRequest, HttpResponse, ResponseError};
-use core::HttpClient;
+use core::{HttpClient, TestReportGenerator, TestReport, TestSummary, SuiteReport, TestResultReport};
 use db::{
     Database, HistoryEntry, Collection, SavedRequest, 
     CreateCollectionInput, CreateRequestInput, 
@@ -449,6 +449,91 @@ fn get_test_runs(
     Err("Database not initialized".to_string())
 }
 
+// Test Report command
+#[tauri::command]
+fn generate_test_report(
+    suite_id: String,
+    format: String,
+    state: tauri::State<'_, AppState>
+) -> Result<String, String> {
+    use crate::db::test_suites::TestDatabase;
+    
+    if let Ok(db_guard) = state.db.lock() {
+        if let Some(ref db) = *db_guard {
+            let test_db = TestDatabase::new(db.get_conn());
+            
+            // Get suite info
+            let suites = test_db.get_suites().map_err(|e| e.to_string())?;
+            let suite = suites.iter().find(|s| s.id == suite_id)
+                .ok_or_else(|| "Suite not found".to_string())?;
+            
+            // Get runs
+            let runs = test_db.get_runs_by_suite(&suite_id).map_err(|e| e.to_string())?;
+            
+            // Build report
+            let mut total_tests = 0i32;
+            let mut total_passed = 0i32;
+            let mut total_failed = 0i32;
+            let mut total_skipped = 0i32;
+            let mut total_duration = 0i64;
+            
+            for run in runs.iter().take(10) {
+                total_tests += run.total_tests;
+                total_passed += run.passed;
+                total_failed += run.failed;
+                total_skipped += run.skipped;
+                total_duration += run.duration_ms;
+            }
+            
+            let success_rate = if total_tests > 0 {
+                (total_passed as f64 / total_tests as f64) * 100.0
+            } else {
+                0.0
+            };
+            
+            let report = TestReport {
+                summary: TestSummary {
+                    total_suites: 1,
+                    total_tests,
+                    passed: total_passed,
+                    failed: total_failed,
+                    skipped: total_skipped,
+                    duration_ms: total_duration,
+                    success_rate,
+                },
+                suites: vec![
+                    SuiteReport {
+                        suite_id: suite_id.clone(),
+                        suite_name: suite.name.clone(),
+                        tests: vec![],
+                        summary: TestSummary {
+                            total_suites: 1,
+                            total_tests,
+                            passed: total_passed,
+                            failed: total_failed,
+                            skipped: total_skipped,
+                            duration_ms: total_duration,
+                            success_rate,
+                        },
+                    }
+                ],
+                generated_at: chrono::Utc::now().timestamp(),
+            };
+            
+            let generator = TestReportGenerator::new();
+            match format.as_str() {
+                "html" => generator.generate_html(&report),
+                "json" => generator.generate_json(&report),
+                _ => Err("Unsupported format".to_string()),
+            }
+        } else {
+            Err("Database not initialized".to_string())
+        }
+    } else {
+        Err("Database not initialized".to_string())
+    }
+}
+
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
@@ -504,7 +589,8 @@ pub fn run() {
             get_test_cases,
             update_test_case_script,
             delete_test_case,
-            get_test_runs
+            get_test_runs,
+            generate_test_report
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

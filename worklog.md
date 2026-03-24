@@ -41,9 +41,28 @@ Phase 3 Week 1 目标：自动化测试增强
 
 ---
 
+### 16:30 - 任务 3.1.2: 测试报告生成
+
+**执行步骤：**
+1. ✅ 创建 `src-tauri/src/core/test_report.rs`
+   - TestReport, TestSummary, SuiteReport, TestResultReport
+   - generate_html(), generate_json() 方法
+2. ✅ 添加 generate_test_report Tauri 命令
+3. ✅ 单元测试验证
+
+**提交：** `feat(phase3-week1): add test report generation`
+
+**验证：**
+- ✅ cargo check --lib 通过
+- ✅ cargo test --lib 通过（3 tests）
+  - test_validate_script ... ok
+  - test_pre_request_script ... ok
+  - test_generate_json_report ... ok
+
+---
+
 ## 下一步
 
 Phase 3 Week 1 剩余任务：
-- [ ] 3.1.2 测试报告生成
 - [ ] 3.1.3 断言库扩展
 - [ ] 3.1.4 变量提取
