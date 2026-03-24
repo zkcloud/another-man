@@ -4,7 +4,7 @@ mod db;
 mod script;
 
 use models::{HttpRequest, HttpResponse, ResponseError};
-use core::{HttpClient, TestReportGenerator, TestReport, TestSummary, SuiteReport, TestResultReport};
+use core::{HttpClient, TestReportGenerator, TestReport, TestSummary, SuiteReport, TestResultReport, VariableExtractor, VariableExtraction};
 use db::{
     Database, HistoryEntry, Collection, SavedRequest, 
     CreateCollectionInput, CreateRequestInput, 
@@ -534,6 +534,38 @@ fn generate_test_report(
     }
 }
 
+// Variable extraction commands
+#[tauri::command]
+fn extract_variables(
+    body: String,
+    headers: std::collections::HashMap<String, String>,
+    extractions: Vec<String>,
+) -> Result<std::collections::HashMap<String, String>, String> {
+    let extractor = VariableExtractor::new();
+    
+    let parsed_extractions: Vec<VariableExtraction> = extractions
+        .iter()
+        .filter_map(|e| extractor.parse_extraction(e))
+        .collect();
+    
+    Ok(extractor.extract_variables(&body, &headers, &parsed_extractions))
+}
+
+#[tauri::command]
+fn extract_json_path(body: String, path: String) -> Result<Option<String>, String> {
+    let json: serde_json::Value = serde_json::from_str(&body)
+        .map_err(|e| format!("Invalid JSON: {}", e))?;
+    
+    let extractor = VariableExtractor::new();
+    Ok(extractor.extract_json_path(&json, &path))
+}
+
+#[tauri::command]
+fn extract_regex(body: String, pattern: String, group: usize) -> Result<Option<String>, String> {
+    let extractor = VariableExtractor::new();
+    Ok(extractor.extract_regex(&body, &pattern, group))
+}
+
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
@@ -590,7 +622,10 @@ pub fn run() {
             update_test_case_script,
             delete_test_case,
             get_test_runs,
-            generate_test_report
+            generate_test_report,
+            extract_variables,
+            extract_json_path,
+            extract_regex
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

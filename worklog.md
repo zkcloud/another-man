@@ -77,7 +77,40 @@ Phase 3 Week 1 目标：自动化测试增强
 
 ---
 
+### 17:00 - 任务 3.1.4: 变量提取
+
+**执行步骤：**
+1. ✅ 创建 `src-tauri/src/core/variable_extractor.rs`
+   - VariableExtractor 结构体
+   - extract_json_path, extract_regex, extract_header, extract_variables
+   - parse_extraction 解析器
+2. ✅ 添加 regex 依赖到 Cargo.toml
+3. ✅ 添加变量提取命令到 lib.rs
+4. ✅ 单元测试验证（14 tests）
+
+**提交：** `feat(phase3-week1): add variable extraction`
+
+**验证：**
+- ✅ cargo test --lib 通过（14 tests）
+
+---
+
+## Phase 3 Week 1 完成 ✅
+
+**Week 1 完成总结：**
+- ✅ 3.1.1 测试套件管理 - 8 个 Tauri 命令 + 前端 UI
+- ✅ 3.1.2 测试报告生成 - HTML/JSON 报告
+- ✅ 3.1.3 断言库扩展 - 12+ 断言方法
+- ✅ 3.1.4 变量提取 - JSONPath/Regex/Header
+
+**总测试数：14 tests passed**
+
+---
+
 ## 下一步
 
-Phase 3 Week 1 剩余任务：
-- [ ] 3.1.4 变量提取
+Phase 3 Week 2:
+- [ ] 3.2.1 Collection Runner
+- [ ] 3.2.2 执行顺序控制
+- [ ] 3.2.3 并发执行
+- [ ] 3.2.4 延迟设置
