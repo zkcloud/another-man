@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
 use crate::models::{HttpRequest, HttpResponse};
+use crate::core::HttpClient;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunConfig {
@@ -115,7 +116,7 @@ impl CollectionRunner {
         env_vars: &HashMap<String, String>,
         delay_ms: u64,
     ) -> Result<Vec<RequestResult>, String> {
-        let http_client = crate::core::HttpClient::new();
+        let http_client = HttpClient::new();
         let mut results = Vec::new();
         
         for (req_id, req_name, request) in requests {

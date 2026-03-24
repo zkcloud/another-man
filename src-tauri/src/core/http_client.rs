@@ -1,6 +1,7 @@
 use crate::models::{HttpMethod, HttpRequest, HttpResponse, RequestBody, ResponseError, ErrorKind};
 use std::time::Instant;
 
+#[derive(Clone)]
 pub struct HttpClient;
 
 impl HttpClient {
