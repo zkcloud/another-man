@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
 
+pub mod assertions;
+pub use assertions::{AssertionEngine, Assertion};
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestResult {
     pub name: String,

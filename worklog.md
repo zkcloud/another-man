@@ -61,8 +61,23 @@ Phase 3 Week 1 目标：自动化测试增强
 
 ---
 
+### 16:45 - 任务 3.1.3: 断言库扩展
+
+**执行步骤：**
+1. ✅ 创建 `src-tauri/src/script/assertions.rs`
+   - AssertionEngine 结构体
+   - 断言方法：status_code, status_success, header_*, body_*, json_*, response_time_*
+2. ✅ 集成到 `src/script/mod.rs`
+3. ✅ 单元测试验证（9 tests）
+
+**提交：** `feat(phase3-week1): extend assertion library`
+
+**验证：**
+- ✅ cargo test --lib 通过（9 tests）
+
+---
+
 ## 下一步
 
 Phase 3 Week 1 剩余任务：
-- [ ] 3.1.3 断言库扩展
 - [ ] 3.1.4 变量提取
